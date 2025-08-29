@@ -15,18 +15,38 @@
     canvas {
       image-rendering: pixelated;
       border: 1px solid #ccc;
+      display: block;
+      margin: 0 auto;
+      width: 40vw;
+      max-width: 40vw;
+      height: auto;
     }
   </style>
 </head>
 <body>
+
+  <div style="position: absolute; top: 20px; left: 20px; right:20px; background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px #0001; line-height: 3vh;">
+    <label>API Node URL: <input type="text" id="apiNodeUrl" value="http://localhost:1317" style="width: 30%;" /></label>
+    <label>Contract Address: <input type="text" id="contractAddr" value="cosmos..." style="width: 30%;" /></label>
+    <span id="status" style="margin-left: 16px; color: #888; width: 100%;"></span>
+  </div>
   <canvas id="bitmap"></canvas>
 
   <script>
-    const API_URL = 'https://<Node API>/cosmwasm/wasm/v1/contract/<contract address>/smart/eyJnZXRfZ3JpZCI6e319Cg=='; // Replace with a node API and contract addresses
+    let intervalId = null;
+
+    function getGridUrl() {
+      const apiNodeUrl = document.getElementById('apiNodeUrl').value.trim();
+      const contractAddr = document.getElementById('contractAddr').value.trim();
+      return apiNodeUrl + '/cosmwasm/wasm/v1/contract/' + contractAddr + '/smart/eyJnZXRfZ3JpZCI6e319Cg==';
+    }
 
     async function fetchAndRenderBitmap() {
+      const status = document.getElementById('status');
       try {
-        const response = await fetch(API_URL);
+        const GRID_URL = getGridUrl();
+        status.textContent = 'Fetching...';
+        const response = await fetch(GRID_URL);
         const json = await response.json();
 
         const { x_size, y_size, z_values } = json.data;
@@ -34,44 +54,49 @@
         const canvas = document.getElementById('bitmap');
         const ctx = canvas.getContext('2d');
 
-        // Resize the canvas dynamically
-        canvas.width = x_size;
-        canvas.height = y_size;
-
-        // Optional: upscale canvas for display (2x size)
-        canvas.style.width = x_size * 2 + 'px';
-        canvas.style.height = y_size * 2 + 'px';
+  canvas.width = x_size;
+  canvas.height = y_size;
+  // Set width to 40% of viewport width, height auto
+  canvas.style.width = '40vw';
+  canvas.style.height = 'auto';
 
         const imageData = ctx.createImageData(x_size, y_size);
         const data = imageData.data;
 
         const pixels = x_size * y_size;
-        const expectedLength = pixels * 6; // 6 hex chars per pixel
-
+        const expectedLength = pixels * 6;
         if (z_values.length < expectedLength) {
           throw new Error(`z_values too short. Expected ${expectedLength}, got ${z_values.length}`);
         }
 
-        // Fill pixel data
         for (let i = 0, p = 0; i < pixels; i++, p += 4) {
           const offset = i * 6;
           const r = parseInt(z_values.substr(offset, 2), 16);
           const g = parseInt(z_values.substr(offset + 2, 2), 16);
           const b = parseInt(z_values.substr(offset + 4, 2), 16);
-
           data[p] = r;
           data[p + 1] = g;
           data[p + 2] = b;
-          data[p + 3] = 255; // fully opaque
+          data[p + 3] = 255;
         }
-
         ctx.putImageData(imageData, 0, 0);
+        status.textContent = 'Updated at ' + new Date().toLocaleTimeString();
       } catch (err) {
-        console.error('Error fetching or rendering image:', err);
+        status.textContent = 'Error fetching image';
+        console.error('Error:', err);
       }
     }
 
-    fetchAndRenderBitmap();
+    // Start refreshing as soon as page loads
+    function startRefreshing() {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      fetchAndRenderBitmap();
+      intervalId = setInterval(fetchAndRenderBitmap, 5000);
+    }
+
+    window.addEventListener('DOMContentLoaded', startRefreshing);
   </script>
 </body>
 </html>
