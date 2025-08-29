@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bitmap Viewer</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f0f0;
+    }
+    canvas {
+      image-rendering: pixelated;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bitmap"></canvas>
+
+  <script>
+    const API_URL = 'https://<Node API>/cosmwasm/wasm/v1/contract/<contract address>/smart/eyJnZXRfZ3JpZCI6e319Cg=='; // Replace with a node API and contract addresses
+
+    async function fetchAndRenderBitmap() {
+      try {
+        const response = await fetch(API_URL);
+        const json = await response.json();
+
+        const { x_size, y_size, z_values } = json.data;
+
+        const canvas = document.getElementById('bitmap');
+        const ctx = canvas.getContext('2d');
+
+        // Resize the canvas dynamically
+        canvas.width = x_size;
+        canvas.height = y_size;
+
+        // Optional: upscale canvas for display (2x size)
+        canvas.style.width = x_size * 2 + 'px';
+        canvas.style.height = y_size * 2 + 'px';
+
+        const imageData = ctx.createImageData(x_size, y_size);
+        const data = imageData.data;
+
+        const pixels = x_size * y_size;
+        const expectedLength = pixels * 6; // 6 hex chars per pixel
+
+        if (z_values.length < expectedLength) {
+          throw new Error(`z_values too short. Expected ${expectedLength}, got ${z_values.length}`);
+        }
+
+        // Fill pixel data
+        for (let i = 0, p = 0; i < pixels; i++, p += 4) {
+          const offset = i * 6;
+          const r = parseInt(z_values.substr(offset, 2), 16);
+          const g = parseInt(z_values.substr(offset + 2, 2), 16);
+          const b = parseInt(z_values.substr(offset + 4, 2), 16);
+
+          data[p] = r;
+          data[p + 1] = g;
+          data[p + 2] = b;
+          data[p + 3] = 255; // fully opaque
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+      } catch (err) {
+        console.error('Error fetching or rendering image:', err);
+      }
+    }
+
+    fetchAndRenderBitmap();
+  </script>
+</body>
+</html>

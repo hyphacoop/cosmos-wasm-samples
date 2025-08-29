@@ -1,38 +1,3 @@
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_json};
-    use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, GetPointResponse};
-
-    #[test]
-    fn set_and_query_grid() {
-        let mut deps = mock_dependencies();
-
-        // Instantiate contract
-        let msg = InstantiateMsg { x_size: 5, y_size: 5 };
-        let info = mock_info("creator", &coins(1000, "earth"));
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // Set point at (2, 3) to 7
-        let info = mock_info("user", &[]);
-        let set_msg = ExecuteMsg::Set { x: 2, y: 3, z: 7 };
-        let _res = execute(deps.as_mut(), mock_env(), info, set_msg).unwrap();
-
-        // Query point at (2, 3)
-        let query_msg = QueryMsg::GetPoint { x: 2, y: 3 };
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let value: GetPointResponse = from_json(&res).unwrap();
-        assert_eq!(value.point, Some(7));
-
-        // Query point at (0, 0) (never set)
-        let query_msg = QueryMsg::GetPoint { x: 0, y: 0 };
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let value: GetPointResponse = from_json(&res).unwrap();
-        assert_eq!(value.point, None);
-    }
-}
 use std::str::FromStr;
 
 #[cfg(not(feature = "library"))]

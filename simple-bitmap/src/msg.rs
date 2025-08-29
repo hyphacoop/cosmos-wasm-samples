@@ -29,13 +29,6 @@ pub struct GetPointResponse {
     pub point: String,
 }
 
-// #[cw_serde]
-// pub struct GetGridResponse {
-//     pub x_size: u32,
-//     pub y_size: u32,
-//     pub z_values: Vec<u32>,
-// }
-
 #[cw_serde]
 pub struct GetGridResponse {
     pub x_size: u8,

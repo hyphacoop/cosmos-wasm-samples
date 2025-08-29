@@ -45,7 +45,7 @@ mod tests {
             Uint128::new(1)
         );
 
-        let msg = InstantiateMsg { count: 1i32 };
+        let msg = InstantiateMsg { x_size: 10, y_size: 10 };
         let cw_template_contract_addr = app
             .instantiate_contract(
                 cw_template_id,
@@ -62,17 +62,17 @@ mod tests {
         (app, cw_template_contract)
     }
 
-    mod count {
+    mod set {
         use super::*;
         use crate::msg::ExecuteMsg;
 
         #[test]
-        fn count() {
+        fn set() {
             let (mut app, cw_template_contract) = proper_instantiate();
-
-            let msg = ExecuteMsg::Increment {};
+            let z_value = String::from("aabbcc");
+            let msg = ExecuteMsg::Set { x: 1, y: 1, z: z_value };
             let cosmos_msg = cw_template_contract.call(msg).unwrap();
             app.execute(Addr::unchecked(USER), cosmos_msg).unwrap();
-        }
+        }       
     }
 }
