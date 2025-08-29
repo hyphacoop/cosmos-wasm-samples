@@ -13,6 +13,7 @@ use crate::state::{STATE};
 const CONTRACT_NAME: &str = "crates.io:staking-contract";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -21,18 +22,37 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let string_size= ((msg.x_size as u32) * (msg.y_size as u32) * 6) as usize;
-    let state = crate::state::State {
-        x_size: msg.x_size,
-        y_size: msg.y_size,
-        z_values: String::from_str(&"0".repeat(string_size)).unwrap(),
-    };
-    STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("x_size", msg.x_size.to_string())
-        .add_attribute("y_size", msg.y_size.to_string()))
+    match msg {
+        InstantiateMsg::Default { x_size, y_size } => {
+            let string_size = (x_size as u32) * (y_size as u32) * 6;
+            let state = crate::state::State {
+                x_size,
+                y_size,
+                z_values: String::from_str(&"0".repeat(string_size as usize)).unwrap(),
+            };
+            STATE.save(deps.storage, &state)?;
+            Ok(Response::new()
+                .add_attribute("method", "instantiate")
+                .add_attribute("x_size", x_size.to_string())
+                .add_attribute("y_size", y_size.to_string()))
+        }
+        InstantiateMsg::WithString { x_size, y_size, z_values } => {
+            let expected_size = (x_size as u32) * (y_size as u32) * 6;
+            if z_values.len() != expected_size as usize {
+                return Err(ContractError::InvalidZValue {});
+            }
+            let state = crate::state::State {
+                x_size,
+                y_size,
+                z_values,
+            };
+            STATE.save(deps.storage, &state)?;
+            Ok(Response::new()
+                .add_attribute("method", "instantiate_with_string")
+                .add_attribute("x_size", x_size.to_string())
+                .add_attribute("y_size", y_size.to_string()))
+        }
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

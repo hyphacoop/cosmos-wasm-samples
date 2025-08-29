@@ -1,10 +1,17 @@
+
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub x_size: u8,
-    pub y_size: u8,
+pub enum InstantiateMsg {
+    Default {
+        x_size: u8,
+        y_size: u8,
+    },
+    WithString {
+        x_size: u8,
+        y_size: u8,
+        z_values: String,
+    },
 }
 
 #[cw_serde]
