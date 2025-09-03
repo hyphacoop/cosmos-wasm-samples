@@ -9,15 +9,15 @@ This contract allows users to set and query point values in a 2D grid (aka a bit
 
 ## Build Contract
 
-Run the following from this sample folder:
+Run the following from the root folder in this repo:
 ```bash
-cargo wasm
-docker run --rm -v "$(pwd)":/code \
+RUSTFLAGS='-C link-arg=-s' cargo wasm
+docker run --rm -v "$(pwd)/bitmap-free":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   cosmwasm/optimizer:0.16.0
 ```
-This will build an optimized version of the contract under `simple-bitmap/artifacts/simple_bitmap.wasm`
+This will build an optimized version of the contract under `bitmap-free/artifacts/bitmap_free.wasm`
 
 ## Run Contract
 
@@ -30,19 +30,25 @@ code_upload_access:
 instantiate_default_permission: Everybody
 ```
 
-> Use the [`test-bitmap.sh`](test-bitmap.sh) script in this folder to store, instantiate, and execute the contract in a Gaia chain.
+> Use the [`test-bitmap-free.sh`](test-bitmap-free.sh) script in this folder to store, instantiate, and execute the contract in a Gaia chain.
 
 ### Deploy Contract
 
 Store the code:
 ```bash
-wasmd tx wasm store path-to/simple_bitmap.wasm -o json | jq -r '.txhash'
+wasmd tx wasm store path-to/bitmap_free.wasm -o json | jq -r '.txhash'
 # Wait for transaction to go on chain
 code_id=$(wasmd query tx $tx_hash -o json | jq -r '.events[] | select(.type=="store_code").attributes[] | select(.key=="code_id").value')
 ```
 Once the code has been stored, you can instantiate, execute, and query it. To instantiate it:
 ```bash
 tx_hash=$(wasmd tx wasm instantiate $code_id '{"x_size":16,"y_size":16}' --label "bitmap" --no-admin -o json | jq -r '.txhash')
+# Wait for transaction to go on chain
+contract_address=$(wasmd query tx $tx_hash -o json | jq -r '.events[] | select(.type=="instantiate").attributes[] | select(.key=="_contract_address").value')
+```
+This will initialize the array with zeroes. Alternatively, you can instantiate the contract with a set of non-zero points:
+```bash
+tx_hash=$(wasmd tx wasm instantiate $code_id '{"x_size":2,"y_size":2,"z_values":AA88228822AA22AA88AA8822}' --label "bitmap" --no-admin -o json | jq -r '.txhash')
 # Wait for transaction to go on chain
 contract_address=$(wasmd query tx $tx_hash -o json | jq -r '.events[] | select(.type=="instantiate").attributes[] | select(.key=="_contract_address").value')
 ```

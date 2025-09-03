@@ -1000,7 +1000,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "simple-bitmap"
+name = "bitmap-pay"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
