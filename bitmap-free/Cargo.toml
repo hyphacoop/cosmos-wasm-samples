@@ -1,5 +1,5 @@
 [package]
-name = "simple-bitmap"
+name = "bitmap-free"
 version = "0.1.0"
 authors = ["Dante Sanchez"]
 edition = "2021"

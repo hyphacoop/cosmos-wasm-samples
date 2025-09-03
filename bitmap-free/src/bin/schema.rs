@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use simple_bitmap::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use bitmap_free::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

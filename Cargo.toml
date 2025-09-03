@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["simple-bitmap"]
+members = ["bitmap-free","bitmap-pay"]
 
 [profile.release]
 opt-level = 3

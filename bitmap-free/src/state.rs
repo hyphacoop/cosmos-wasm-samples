@@ -13,6 +13,3 @@ pub struct State {
 }
 
 pub const STATE: Item<State> = Item::new("state");
-
-// The grid is represented as a map from (x, y) to point (z)
-// pub const GRID: Map<(u32, u32), u32> = Map::new("grid");
