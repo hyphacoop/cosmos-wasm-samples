@@ -31,8 +31,9 @@ instantiate_json=$(jq -n \
   --argjson supply_fee_factor 50 \
   --argjson update_base_fee 50 \
   --argjson update_fee_factor 10 \
+  --argjson fee_factor_scale 100 \
   --arg fee_denom $CHAIN_DENOM \
-  '{"x_size":$xsize,"y_size":$ysize, "recipient": $recipient, "supply_base_fee": $supply_base_fee, "supply_fee_factor": $supply_fee_factor, "update_base_fee": $update_base_fee, "update_fee_factor": $update_fee_factor, "fee_denom": $fee_denom}')
+  '{"x_size":$xsize,"y_size":$ysize, "recipient": $recipient, "supply_base_fee": $supply_base_fee, "supply_fee_factor": $supply_fee_factor, "update_base_fee": $update_base_fee, "update_fee_factor": $update_fee_factor, "fee_factor_scale": $fee_factor_scale,"fee_denom": $fee_denom}')
 tx_hash=$($CHAIN_BINARY tx wasm instantiate $code_id "$instantiate_json" --home $CHAIN_HOME --label "bitmap" --no-admin --from $WALLET --gas auto --gas-adjustment 3 --gas-prices $GAS_PRICE -y -o json --node $NODE --chain-id $CHAIN_ID | jq -r '.txhash')
 sleep $COMMIT_TIMEOUT
 echo "> Querying the hash for the contract address"
@@ -52,8 +53,9 @@ instantiate_json=$(jq -n \
   --argjson supply_fee_factor 50 \
   --argjson update_base_fee 50 \
   --argjson update_fee_factor 10 \
+  --argjson fee_factor_scale 100 \
   --arg fee_denom $CHAIN_DENOM \
-  '{"x_size":$xsize,"y_size":$ysize, "z_values":$zvalues, "recipient": $recipient, "supply_base_fee": $supply_base_fee, "supply_fee_factor": $supply_fee_factor, "update_base_fee": $update_base_fee, "update_fee_factor": $update_fee_factor, "fee_denom": $fee_denom}')
+  '{"x_size":$xsize,"y_size":$ysize, "z_values":$zvalues, "recipient": $recipient, "supply_base_fee": $supply_base_fee, "supply_fee_factor": $supply_fee_factor, "update_base_fee": $update_base_fee, "update_fee_factor": $update_fee_factor, "fee_factor_scale": $fee_factor_scale, "fee_denom": $fee_denom}')
 tx_hash=$($CHAIN_BINARY tx wasm instantiate $code_id "$instantiate_json" --home $CHAIN_HOME --label "bitmap" --no-admin --from $WALLET --gas auto --gas-adjustment 3 --gas-prices $GAS_PRICE -y -o json --node $NODE --chain-id $CHAIN_ID | jq -r '.txhash')
 sleep $COMMIT_TIMEOUT
 echo "> Querying the hash for the contract address"

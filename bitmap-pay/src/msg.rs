@@ -8,9 +8,10 @@ pub struct InstantiateMsg {
     pub z_values: Option<String>,
     pub recipient: String,
     pub supply_base_fee: u128,
-    pub supply_fee_factor: u8,
+    pub supply_fee_factor: u128,
     pub update_base_fee: u128,
-    pub update_fee_factor: u8,
+    pub update_fee_factor: u128,
+    pub fee_factor_scale: u128,
     pub fee_denom: String,
 }
 
@@ -47,6 +48,8 @@ pub struct GetCostResponse {
 #[cw_serde]
 pub struct GetPointResponse {
     pub point: String,
+    pub is_set: bool,
+    pub update_count: u8,
 }
 
 #[cw_serde]
@@ -54,13 +57,16 @@ pub struct GetGridResponse {
     pub x_size: u8,
     pub y_size: u8,
     pub z_values: String,
+    pub set_points: Vec<u8>,
+    pub update_counts: Vec<u8>,
 }
 
 #[cw_serde]
 pub struct GetParamsResponse {
     pub supply_base_fee: u128,
-    pub supply_fee_factor: u8,
+    pub supply_fee_factor: u128,
     pub update_base_fee: u128,
-    pub update_fee_factor: u8,
+    pub update_fee_factor: u128,
+    pub fee_factor_scale: u128,
     pub fee_denom: String,
 }

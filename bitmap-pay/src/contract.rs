@@ -1,5 +1,3 @@
-use std::vec::Vec;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -31,6 +29,7 @@ pub fn instantiate(
         }
         None => "0".repeat(string_size as usize),
     };
+    let grid_len = (msg.x_size as usize) * (msg.y_size as usize);
     let state = crate::state::State {
         x_size: msg.x_size,
         y_size: msg.y_size,
@@ -40,9 +39,10 @@ pub fn instantiate(
         supply_fee_factor: msg.supply_fee_factor,
         update_base_fee: msg.update_base_fee,
         update_fee_factor: msg.update_fee_factor,
+        fee_factor_scale: msg.fee_factor_scale,
         fee_denom: msg.fee_denom.clone(),
-        set_points: Vec::new(),
-        update_counts: std::collections::BTreeMap::new(),
+        set_points: vec![0u8; grid_len],
+        update_counts: vec![0u8; grid_len],
     };
     STATE.save(deps.storage, &state)?;
     Ok(Response::new()
@@ -53,6 +53,7 @@ pub fn instantiate(
         .add_attribute("supply_fee_factor", msg.supply_fee_factor.to_string())
         .add_attribute("update_base_fee", msg.update_base_fee.to_string())
         .add_attribute("update_fee_factor", msg.update_fee_factor.to_string())
+        .add_attribute("fee_factor_scale", msg.fee_factor_scale.to_string())
         .add_attribute("fee_denom", msg.fee_denom.clone())
     )
 }
@@ -99,19 +100,28 @@ pub mod execute {
             return Err(ContractError::InvalidZValue {});
         }
 
-        let point = (x, y);
-        let key = format!("{}_{}", x, y);
-        let already_set = state.set_points.contains(&point);
-        let update_count = *state.update_counts.get(&key).unwrap_or(&0);
-        let supply_curve_cost = bonding_curve(state.supply_base_fee, state.supply_fee_factor as f64 / 100.0, state.set_points.len());
-        let update_curve_cost= bonding_curve(state.update_base_fee, state.update_fee_factor as f64 / 100.0, update_count as usize);
+        let idx = (y as usize) * (state.x_size as usize) + (x as usize);
+        let already_set = state.set_points[idx] != 0;
+        let update_count = state.update_counts[idx];
+    let effective_update_count = update_count;
+        let num_set_points = state.set_points.iter().filter(|b| **b != 0).count();
+        let supply_curve_cost = bonding_curve(
+            state.supply_base_fee,
+            state.supply_fee_factor as f64 / state.fee_factor_scale as f64,
+            num_set_points,
+        );
+        let update_curve_cost = bonding_curve(
+            state.update_base_fee,
+            state.update_fee_factor as f64 / state.fee_factor_scale as f64,
+            effective_update_count as usize,
+        );
         let set_point_cost = supply_curve_cost + update_curve_cost;
-            let sent = info
-                .funds
-                .iter()
-                .find(|c| c.denom == state.fee_denom)
-                .map(|c| c.amount.u128())
-                .unwrap_or(0);
+        let sent = info
+            .funds
+            .iter()
+            .find(|c| c.denom == state.fee_denom)
+            .map(|c| c.amount.u128())
+            .unwrap_or(0);
         if sent < set_point_cost {
             return Err(ContractError::InsufficientFunds {});
         }
@@ -131,9 +141,12 @@ pub mod execute {
         state.z_values.replace_range(start..end, &z);
 
         if !already_set {
-            state.set_points.push(point);
+            state.set_points[idx] = 1;
         }
-        state.update_counts.insert(key, update_count + 1);
+        // increment update count, but cap at 255
+        if state.update_counts[idx] < 255 {
+            state.update_counts[idx] = update_count.saturating_add(1);
+        }
         STATE.save(deps.storage, &state)?;
         Ok(Response::new()
             .add_message(bank_msg)
@@ -145,7 +158,7 @@ pub mod execute {
             .add_attribute("cost", set_point_cost.to_string())
             .add_attribute("recipient", state.recipient)
             .add_attribute("already_set", already_set.to_string())
-            .add_attribute("update_count", (update_count + 1).to_string()))
+            .add_attribute("update_count", (update_count).to_string()))
     }
 }
 
@@ -166,12 +179,19 @@ pub mod query {
 
     pub fn get_point(deps: Deps, x: u8, y: u8) -> StdResult<GetPointResponse> {
         let state = STATE.load(deps.storage)?;
+        let idx = (y as usize) * (state.x_size as usize) + (x as usize);
         let y_offset = (y as u32) * (state.x_size as u32) * 6;
         let x_offset = (x as u32) * 6;
         let start = (y_offset + x_offset) as usize;
         let end = (start + 6) as usize;
         let point = state.z_values[start..end].to_string();
-        Ok(GetPointResponse { point })
+        let is_set = state.set_points[idx] != 0;
+    let update_count = state.update_counts[idx];
+        Ok(GetPointResponse {
+            point,
+            is_set,
+            update_count,
+        })
     }
 
     pub fn get_grid(deps: Deps) -> StdResult<GetGridResponse> {
@@ -180,16 +200,26 @@ pub mod query {
             x_size: state.x_size,
             y_size: state.y_size,
             z_values: state.z_values,
+            set_points: state.set_points.clone(),
+            update_counts: state.update_counts.clone(),
         })
     }
 
     pub fn get_cost(deps: Deps, x: u8, y: u8) -> StdResult<GetCostResponse> {
         let state = STATE.load(deps.storage)?;
-        let key = format!("{}_{}", x, y);
-        let update_count = *state.update_counts.get(&key).unwrap_or(&0);
-        // let supply_factor = state.supply_fee_factor as f64 / 100.0;
-        let supply_curve_cost = super::execute::bonding_curve(state.supply_base_fee, state.supply_fee_factor as f64 / 100.0, state.set_points.len());  // base=50, factor=0.5
-        let update_curve_cost= super::execute::bonding_curve(state.update_base_fee, state.update_fee_factor as f64 / 100.0, update_count as usize);
+        let idx = (y as usize) * (state.x_size as usize) + (x as usize);
+        let update_count = state.update_counts[idx];
+        let num_set_points = state.set_points.iter().filter(|b| **b != 0).count();
+        let supply_curve_cost = super::execute::bonding_curve(
+            state.supply_base_fee,
+            state.supply_fee_factor as f64 / state.fee_factor_scale as f64,
+            num_set_points,
+        );
+        let update_curve_cost = super::execute::bonding_curve(
+            state.update_base_fee,
+            state.update_fee_factor as f64 / state.fee_factor_scale as f64,
+            update_count as usize,
+        );
         let set_point_cost = supply_curve_cost + update_curve_cost;
         Ok(GetCostResponse { cost: set_point_cost })
     }
@@ -201,6 +231,7 @@ pub mod query {
             supply_fee_factor: state.supply_fee_factor,
             update_base_fee: state.update_base_fee,
             update_fee_factor: state.update_fee_factor,
+            fee_factor_scale: state.fee_factor_scale,
             fee_denom: state.fee_denom.clone(),
         })
     }
