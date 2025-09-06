@@ -30,6 +30,7 @@ pub fn instantiate(
         None => "0".repeat(string_size as usize),
     };
     let grid_len = (msg.x_size as usize) * (msg.y_size as usize);
+    let bitfield_len = (grid_len + 7) / 8;
     let state = crate::state::State {
         x_size: msg.x_size,
         y_size: msg.y_size,
@@ -41,7 +42,7 @@ pub fn instantiate(
         update_fee_factor: msg.update_fee_factor,
         fee_factor_scale: msg.fee_factor_scale,
         fee_denom: msg.fee_denom.clone(),
-        set_points: vec![0u8; grid_len],
+        set_points: vec![0u8; bitfield_len],
         update_counts: vec![0u8; grid_len],
     };
     STATE.save(deps.storage, &state)?;
@@ -54,8 +55,7 @@ pub fn instantiate(
         .add_attribute("update_base_fee", msg.update_base_fee.to_string())
         .add_attribute("update_fee_factor", msg.update_fee_factor.to_string())
         .add_attribute("fee_factor_scale", msg.fee_factor_scale.to_string())
-        .add_attribute("fee_denom", msg.fee_denom.clone())
-    )
+        .add_attribute("fee_denom", msg.fee_denom.clone()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -101,9 +101,11 @@ pub mod execute {
         }
 
         let idx = (y as usize) * (state.x_size as usize) + (x as usize);
-        let already_set = state.set_points[idx] != 0;
+    let byte_idx = idx / 8;
+    let bit_idx = idx % 8;
+    let already_set = (state.set_points[byte_idx] & (1 << bit_idx)) != 0;
         let update_count = state.update_counts[idx];
-    let effective_update_count = update_count;
+        let effective_update_count = update_count;
         let num_set_points = state.set_points.iter().filter(|b| **b != 0).count();
         let supply_curve_cost = bonding_curve(
             state.supply_base_fee,
@@ -141,7 +143,7 @@ pub mod execute {
         state.z_values.replace_range(start..end, &z);
 
         if !already_set {
-            state.set_points[idx] = 1;
+            state.set_points[byte_idx] |= 1 << bit_idx;
         }
         // increment update count, but cap at 255
         if state.update_counts[idx] < 255 {
@@ -174,19 +176,21 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub mod query {
     use super::*;
-    use crate::msg::{GetCostResponse, GetGridResponse, GetPointResponse, GetParamsResponse};
+    use crate::msg::{GetCostResponse, GetGridResponse, GetParamsResponse, GetPointResponse};
     use crate::state::STATE;
 
     pub fn get_point(deps: Deps, x: u8, y: u8) -> StdResult<GetPointResponse> {
         let state = STATE.load(deps.storage)?;
         let idx = (y as usize) * (state.x_size as usize) + (x as usize);
+        let byte_idx = idx / 8;
+        let bit_idx = idx % 8;
         let y_offset = (y as u32) * (state.x_size as u32) * 6;
         let x_offset = (x as u32) * 6;
         let start = (y_offset + x_offset) as usize;
         let end = (start + 6) as usize;
         let point = state.z_values[start..end].to_string();
-        let is_set = state.set_points[idx] != 0;
-    let update_count = state.update_counts[idx];
+        let is_set = (state.set_points[byte_idx] & (1 << bit_idx)) != 0;
+        let update_count = state.update_counts[idx];
         Ok(GetPointResponse {
             point,
             is_set,
@@ -209,7 +213,7 @@ pub mod query {
         let state = STATE.load(deps.storage)?;
         let idx = (y as usize) * (state.x_size as usize) + (x as usize);
         let update_count = state.update_counts[idx];
-        let num_set_points = state.set_points.iter().filter(|b| **b != 0).count();
+        let num_set_points = state.set_points.iter().map(|byte| byte.count_ones() as usize).sum();
         let supply_curve_cost = super::execute::bonding_curve(
             state.supply_base_fee,
             state.supply_fee_factor as f64 / state.fee_factor_scale as f64,
@@ -221,7 +225,9 @@ pub mod query {
             update_count as usize,
         );
         let set_point_cost = supply_curve_cost + update_curve_cost;
-        Ok(GetCostResponse { cost: set_point_cost })
+        Ok(GetCostResponse {
+            cost: set_point_cost,
+        })
     }
 
     pub fn get_params(deps: Deps) -> StdResult<GetParamsResponse> {
@@ -235,5 +241,4 @@ pub mod query {
             fee_denom: state.fee_denom.clone(),
         })
     }
-    
 }
