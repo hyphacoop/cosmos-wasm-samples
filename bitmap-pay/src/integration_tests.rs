@@ -51,6 +51,7 @@ mod tests {
             supply_fee_factor: 10,
             update_base_fee: 100,
             update_fee_factor: 10,
+            fee_factor_scale: 100,
             fee_denom: NATIVE_DENOM.to_string(),
         };
         let cw_template_contract_addr = app

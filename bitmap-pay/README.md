@@ -12,6 +12,7 @@ The cost associated with setting a point is calculated with two curves. The firs
 * `supply_fee_factor`
 * `update_base_fee`
 * `update_fee_factor`
+* `fee_factor_scale`
 
 Before set a point, you must run a `get_cost()` query for the coordinates you want. Then you can execute `set_point()` using `--amount` flag with the relevant cost in it.
 
@@ -55,11 +56,12 @@ instantiate_json=$(jq -n \
   --argjson ysize 4 \
   --arg recipient "<recipient address>" \
   --argjson supply_base_fee <u128> \
-  --argjson supply_fee_factor <u8> \
+  --argjson supply_fee_factor <u128> \
   --argjson update_base_fee <u128> \
-  --argjson update_fee_factor <u8> \
+  --argjson update_fee_factor <u128> \
+  --argjson fee_factor_scale <u128> \
   --arg fee_denom "<denom>" \
-  '{"x_size":$xsize,"y_size":$ysize, "recipient": $recipient, "supply_base_fee": $supply_base_fee, "supply_fee_factor": $supply_fee_factor, "update_base_fee": $update_base_fee, "update_fee_factor": $update_fee_factor, "fee_denom": $fee_denom}')
+  '{"x_size":$xsize,"y_size":$ysize, "recipient": $recipient, "supply_base_fee": $supply_base_fee, "supply_fee_factor": $supply_fee_factor, "update_base_fee": $update_base_fee, "update_fee_factor": $update_fee_factor, "fee_factor_scale": $fee_factor_scale, "fee_denom": $fee_denom}')
 tx_hash=$($CHAIN_BINARY tx wasm instantiate $code_id "$instantiate_json" --home $HOME --label "bitmap" --no-admin --from $WALLET --gas auto --gas-adjustment 3 --gas-prices $GAS_PRICE -y -o json --node $NODE --chain-id $CHAIN_ID | jq -r '.txhash')
 # Wait for transaction to go on chain
 contract_address=$(wasmd query tx $tx_hash -o json | jq -r '.events[] | select(.type=="instantiate").attributes[] | select(.key=="_contract_address").value')
@@ -67,8 +69,8 @@ contract_address=$(wasmd query tx $tx_hash -o json | jq -r '.events[] | select(.
 
 The cost for setting a point is calculated as follows:
 ```
-supply_curve_cost = supply_base_fee * e^( (supply_fee_factor / 100) * number_of_points_set_so_far_in_the_grid)
-update_curve_cost = update_base_fee * e^( (update_fee_factor / 100) * number_of_times_this_point_has_been_set)
+supply_curve_cost = supply_base_fee * e^( (supply_fee_factor / fee_factor_scale) * number_of_points_set_so_far_in_the_grid)
+update_curve_cost = update_base_fee * e^( (update_fee_factor / fee_factor_scale) * number_of_times_this_point_has_been_set)
 set_point_cost = supply_curve_cost + update_curve_cost;
 ```
 
