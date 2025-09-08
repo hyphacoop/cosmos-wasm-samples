@@ -57,8 +57,6 @@ pub struct GetGridResponse {
     pub x_size: u8,
     pub y_size: u8,
     pub z_values: String,
-    pub set_points: Vec<u8>,
-    pub update_counts: Vec<u8>,
 }
 
 #[cw_serde]

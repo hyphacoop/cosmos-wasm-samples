@@ -204,8 +204,6 @@ pub mod query {
             x_size: state.x_size,
             y_size: state.y_size,
             z_values: state.z_values,
-            set_points: state.set_points.clone(),
-            update_counts: state.update_counts.clone(),
         })
     }
 
