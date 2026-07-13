@@ -38,9 +38,11 @@ cargo wasm
 RUSTFLAGS='-C link-arg=-s' cargo wasm
 ```
 
-* Compile with cosmwasm/optimizer: this will create a wasm file in `<sample project>/artifacts/`
+* Compile with cosmwasm/optimizer: this repo is a cargo workspace, so mount the repo
+  root (not a single sample's subdirectory) — the optimizer auto-detects the workspace
+  and builds every member, writing the optimized wasm files to `./artifacts/`
 ```
-docker run --rm -v "$(pwd)/<sample project>":/code \
+docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   cosmwasm/optimizer:0.16.0
