@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["bitmap-free","bitmap-pay"]
+members = ["bitmap-free","bitmap-pay","delegate-vote","validator-query","proposal-query"]
 
 [profile.release]
 opt-level = 3
