@@ -30,7 +30,9 @@
     <label>Contract Address: <input type="text" id="contractAddr" value="cosmos..." style="width: 30%;" /></label>
     <span id="status" style="margin-left: 16px; color: #888; width: 100%;"></span>
   </div>
+
   <canvas id="bitmap"></canvas>
+  <div id="zSummary" style="margin: 24px auto; max-width: 40vw; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 16px; font-size: 1.1em; line-height: 1.7em;"></div>
 
   <script>
     let intervalId = null;
@@ -69,17 +71,26 @@
           throw new Error(`z_values too short. Expected ${expectedLength}, got ${z_values.length}`);
         }
 
+        // Count unique 6-char sequences in z_values
+        const zCounts = {};
         for (let i = 0, p = 0; i < pixels; i++, p += 4) {
           const offset = i * 6;
-          const r = parseInt(z_values.substr(offset, 2), 16);
-          const g = parseInt(z_values.substr(offset + 2, 2), 16);
-          const b = parseInt(z_values.substr(offset + 4, 2), 16);
+          const z = z_values.substr(offset, 6);
+          zCounts[z] = (zCounts[z] || 0) + 1;
+          const r = parseInt(z.substr(0, 2), 16);
+          const g = parseInt(z.substr(2, 2), 16);
+          const b = parseInt(z.substr(4, 2), 16);
           data[p] = r;
           data[p + 1] = g;
           data[p + 2] = b;
           data[p + 3] = 255;
         }
         ctx.putImageData(imageData, 0, 0);
+        // Render summary
+        const summaryDiv = document.getElementById('zSummary');
+        const sorted = Object.entries(zCounts).sort((a, b) => b[1] - a[1]);
+        summaryDiv.innerHTML = `<b>Unique Colour Counts:</b><br>` +
+          sorted.map(([z, count]) => `<span style="display:inline-block;width:90px">${z}</span>: ${count}`).join('<br>');
         status.textContent = 'Updated at ' + new Date().toLocaleTimeString();
       } catch (err) {
         status.textContent = 'Error fetching image';

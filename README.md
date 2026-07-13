@@ -38,12 +38,15 @@ cargo wasm
 RUSTFLAGS='-C link-arg=-s' cargo wasm
 ```
 
-* Compile with cosmwasm/optimizer: this repo is a cargo workspace, so mount the repo
-  root (not a single sample's subdirectory) — the optimizer auto-detects the workspace
-  and builds every member, writing the optimized wasm files to `./artifacts/`
+* Compile with cosmwasm/optimizer: this repo is a cargo workspace, but its members
+  don't live under a `contracts/` prefix, so the optimizer's workspace auto-detection
+  won't find any of them. Mount the repo root and pass the sample's directory as an
+  argument to build just that one; the optimized wasm lands in `./artifacts/`. Use
+  `0.17.0` (`0.16.0` ships Rust 1.78 and can't build dependencies that require
+  `edition2024`).
 ```
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/optimizer:0.16.0
+  cosmwasm/optimizer:0.17.0 ./<sample project>
 ```
